@@ -1,0 +1,30 @@
+var_label(df) <- list(
+	leg_f = "Légumes: faible (max 1/sem)",
+	sod_f = "Sodas: faible (jamais)",
+	poi_f = "Poisson: faible (<1/sem)",
+	vro_f = "Viande rouge: faible (<1/sem)",
+	fas_f = "Fast-food: faible (jamais)" ,
+	leg_i = "Légumes: intense (min 1/j)" ,
+	sod_i = "Sodas: intense (min 1/sem)" ,
+	poi_i = "Poisson: intense (min 2/sem)" ,
+	vro_i = "Viande rouge: intense (min 4/sem)" ,
+	fas_i = "Fastfood: intense (min 1/sem)"
+	)
+	
+	"alc_f" , "Alcool: faible (jamais)",
+	"alc_i" , "Alcool : intense (min 2/jour)",
+	"fum_f" , "Cigarette : faible (jamais)",
+	"fum_f" , "Cigarette : intense (min 10/jour)",
+	"leg_f" , "Légumes: faible (max 1/sem)",
+	"sod_f" , "Sodas: faible (jamais)",
+	"poi_f" , "Poisson: faible (<1/sem)",
+	"vro_f" , "Viande rouge: faible (<1/sem)",
+	"fas_f" , "Fast-food: faible (jamais)" ,
+	"leg_i" , "Légumes: intense (min 1/j)" ,
+	"sod_i" , "Sodas: intense (min 1/sem)" ,
+	"poi_i" , "Poisson: intense (min 2/sem)" ,
+	"vro_i" , "Viande rouge: intense (min 4/sem)" ,
+	"fas_i" , "Fastfood: intense (min 1/sem)"
+	"san_f" , "Santé : excellente (8/8)",
+	"san_i" , "Santé : mauvaise (1-5/8)",
+	"bmi_i" , "Corpulence : obèse (IMC>30)"

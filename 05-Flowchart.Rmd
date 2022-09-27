@@ -1,0 +1,65 @@
+---
+title: "05-Flowchart"
+author: "Marie Plessz"
+date: "20/11/2020"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)  # for %>% pipes
+library(DiagrammeR)
+library(DiagrammeRsvg)  # for conversion to svg
+library(rsvg)  # for saving svg
+```
+
+85,069 individuals were excluded because they joined the sample after 2016; 26,603 people were excluded because they were older than 60 at follow-up; 3,010 individuals were excluded because of missing information on employment; 19,880 individuals were excluded because they had a status other than “employed” at inclusion; 28,587 individuals were excluded because they either had no follow-up information or no information on employment at follow-up; 10,157 were excluded because of missing values on outcome variables when all constructed outcome variables were merged onto the same file to ensure a uniform sample file at inclusion.
+
+
+```{r diagram}
+
+flowchart <- grViz("digraph flowchart {
+	node [fontname = Helvetica, shape = rectangle, fontsize = 9]
+	in0 [label = 'Cohorte Constances  \\n N=199 711 '][group=g1]
+	in1 [label = 'Inclusion 2012-2016 \\n n=114 642'][group=g1]
+  in2 [label = 'Âge (inclusion) 18-60 ans \\n n=88 039'][group=g1]
+  in3 [label = 'En emploi (inclusion) \\n n=68 159 '][group=g1]
+  in4 [label = 'Suivi 2017 reçu \\n n=44 794'][group=g1]
+  in5 [label = 'En emploi ou chômage (2017) \\n n=39 572 (dont 1049 au chômage)'][group=g1][fontsize = 8]
+  in6 [label = 'Cas complets n=30 561 \\n (dont 718 au chômage 2017)'][group=g1]
+
+  ex1 [label = 'Inclus après 2016 \\n n=85 069 '][style=rounded]
+  ex2 [label = 'Âge (inclusion) >60  \\n n=26 603'][style=rounded]
+  ex3 [label = 'Statut manquant (inclusion) \\n n=3010 '][style=rounded]
+  ex3b [label = 'Autre statut \\n n=16 870'][style=rounded]
+  ex4 [label = 'Suivi 2017 manquant \\n n=23 365'][style=rounded]
+  ex5 [label = 'Statut manquant (2017) \\n n=1780'][style=rounded]
+  ex5b [label = 'Autre statut (2017) \\n n=3442'][style=rounded]
+  ex6 [label = 'Cas incomplets \\n n=9011'][style=rounded]
+  
+  
+  in0 -> in1 -> in2 -> in3 -> in4 -> in5 -> in6
+  in0 -> ex1
+  in1 -> ex2
+  in2 -> ex3
+  in2 -> ex3b
+  in3 -> ex4
+  in4 -> ex5 
+  in4 -> ex5b
+  in5 -> ex6
+}") 
+
+flowchart
+
+```
+Export décevant. j'ai sauvé "manuellement".
+
+```{r export}
+flowchart %>%
+     export_svg()    %>%
+     charToRaw %>% 
+#		rsvg::rsvg_png("Resultats/05_flowchart.png")
+    rsvg_pdf("Resultats/05_flowchart.pdf")
+```
+

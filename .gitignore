@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rproj
+/Data/
+/Data-Sehar/
+00_GoCho_debut.do
+/3-R-ACM/*.RDS
+*.doc
+*.docx
+test.*
+*.xlsx
+*.gph

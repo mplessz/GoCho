@@ -1,0 +1,144 @@
+---
+title: "07-props-graph-evolutions"
+author: "Marie Plessz"
+date: "01/12/2020"
+output: github_document
+---
+
+# graphiques des évolutions des pratiques inclusion 2017
+
+Le début pourrait être commun à plusieurs programmes, envisager de l'isoler dans un script commun.
+
+**BUT** : facet de graph sur "pratique intense" de chaque activité, inclusion et 2017, emploi et cho.
+
+
+
+```{r setup, include=FALSE}
+library(haven)
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(questionr)
+library(glue)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+#tag
+tag <- "07-graph-evolution"
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}.png")
+
+```
+
+
+# préparer les données
+```{r dataprep}
+data_orig <- read_dta("Data/Cree/HDR6_04_prosp_studypop.dta")
+
+df <- data_orig %>% 
+select(proj_isp, traitt, contains("_i_") )
+
+```
+
+```{r pivotvardep}
+dfv <- df %>% 
+	pivot_longer(cols = contains("_i_") ,
+							 names_to = "vardep",
+							 values_to = "value") %>% 
+	separate(col = vardep, into = c("vardep", "Phase"), sep = "_i_") %>% 
+	pivot_wider(id_cols = c("proj_isp", "vardep", "traitt" ), names_from = Phase, values_from = value) %>% 
+	mutate(cc = !is.na(inc) & !is.na(sui) )
+
+# extraire les effectifs complets et incomplets pour chaque var
+effectifs <- dfv %>% 
+		group_by(vardep, cc) %>% 
+		count() %>% 
+		mutate (effectif = if_else(cc==FALSE, "Incomplets", "Complets")) %>% 
+		pivot_wider(id_cols = vardep, 
+								values_from = n, 
+								names_from = effectif) 
+
+effectifs
+
+sum(effectifs$Complets) == dim(subset(dfv, cc ==  T))[[1]]
+
+# je reprends dfv pour éliminer les cas incomplets
+dfl <- dfv %>% filter(cc == 1) %>% 
+	pivot_longer(cols = c(inc, sui), names_to = "Phase", values_to = "intense") %>% 
+	mutate(Phase = as.factor(Phase))
+
+dfl <- dfl %>% mutate(traitt = as.factor(traitt)) %>% 
+	group_by(vardep, Phase, traitt ) %>% 
+	summarise(pct = mean(intense) * 100) 
+
+```
+
+
+
+
+```{r}
+# titres
+
+effectifs<-  effectifs %>% 
+	mutate(vardep = as.factor(vardep)) %>% 
+	mutate(vartitre =  fct_recode(vardep,
+															 "Alcool" = "alc",
+															 "Cigarette" = "fum",
+															 "Légumes" = "leg",
+															 "Poisson" = "poi",
+															 "Viande rouge" = "vro",
+															 "Boissons sucrées" = "sod",
+															 "Fast-food" = "fas",
+															 "Corpulence" = "bmi",
+															 "Mauvaise santé" = "san"
+															 ) ) %>% 
+	mutate(ordre = fct_recode(vardep,
+														"1" = "alc",
+														"2" = "fum",
+														"3" = "leg",
+														"4" = "poi",
+														"5" = "vro",
+														"6" = "sod",
+														"7" = "fas",
+														"8" = "bmi",
+														"9" = "san")) %>% 
+				 	mutate(ordre = 	as.numeric(as.character(ordre)))
+
+df_titre <- effectifs %>% 
+	mutate(titre = glue("{vartitre} (n= {Complets})")) %>%
+	mutate(titre = as.factor(titre)) %>% 
+	arrange(ordre)  %>% 
+	select(vardep, vartitre, titre) 
+
+df_titre$titre <- fct_inorder(df_titre$titre)
+
+# ajouter  les titres
+df_graph <- dfl %>% 
+	left_join(df_titre, by = "vardep") %>% 
+	mutate(Phase = fct_recode(Phase, 
+														 "Inclusion" = "inc", 
+														"2017" = "sui"  )) %>% 
+	mutate(traitt = fct_recode(traitt,
+														 "En emploi en 2017" = "0",
+														 "Chomâge en 2017" = "1"))
+
+
+```
+
+```{r graph, fig.height=10, fig.width=6 }
+
+
+df_graph %>% 	ggplot() +
+	geom_line(aes(x = Phase, y =  pct, group = traitt, color = traitt),
+						stat = "identity") +
+	ylab("Pratique intense (%)")  +
+	facet_wrap(~ titre, scales = "fixed", ncol = 2 )  +
+	theme_bw() +
+	theme(legend.position = "bottom", legend.title = element_blank()) +
+	ggsave()
+	ggsave("Resultats/03_valeurspropres.png", width = 6, height = 5)
+
+
+```
+

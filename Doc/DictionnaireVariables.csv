@@ -1,0 +1,11 @@
+;;Collecte/questions;Participation;pratique intense;type de fr‚quence;d‚finition fr‚quence;;
+;;;p;i;;;control;Remarques
+" ""alc""";Alcool ;semainier;"0 si ""jamais"" ou si aucune boisson la semaine pr‚c‚dent le questionnaire";2 verres par jour en moyenne dans le semainier. Hommes ou femmes ;n;nombre moyen de verres par jour, arrondi … l'entier inf‚rieur. 0 inclut toutes les pers qui boivent moins d'un verre par jour;;
+" ""fum""";" ""Cigarette"" ";"question vie entiŠre … l'inclusion, ""actuellement"" dans le suivi. Cigarettes uniquement";fume actuellement ;>= 10 cigarettes/ jour (1/2 paquet);n;nombre de cigarettes;fumeur, non fumeur, ex-fumeur;… l'inclusion le nb de cigarettes est la moyenne sur l'ensemble de la vie de fumeur. Comme les gens tendent … diminuer leur conso en vieillissant, ‡a surestime la conso … l'inclusion. Les 2 vars ne sont pas strictmeent comparables.
+" ""leg""";" ""L‚gumes"" ";fr‚quentiel alimentaire;;;o;;;
+" ""poi""";" ""Poisson"" ";fr‚quentiel alimentaire;;;o;;;
+" ""vro""";" ""Viande rouge"" ";fr‚quentiel alimentaire;;;o;;;
+" ""sod""";" ""Boissons sucr‚es"" ";fr‚quentiel alimentaire;;;o;;;
+" ""fas""";" ""Fast-food"" ";fr‚quentiel alimentaire;;;o;;;
+" ""bmi""";" ""Corpulence"" ";;;;c;;;
+" ""san""";" ""Mauvaise sant‚"" ";;;;c;;;

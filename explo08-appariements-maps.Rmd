@@ -1,0 +1,287 @@
+---
+title: "test"
+author: "Marie Plessz"
+date: "07/12/2020"
+output: html_document
+---
+
+# objectif : automatiser les modèles sur les données ainsi que le cem
+
+1. nest les données
+2. apparier pour chaque vardep, avec vardep à l'inclusion
+3. modèles avant appariement
+4. modèles après appariement
+5. tableau
+
+pour cela il faut : 
+[x] nest
+[x] faire fonctionner purrr::map
+[x] pour ça, écrire toutes les fonctions qui vont être mappées de façon à ne pas avoir à écrire de "fonctions anonymes"
+[x] construire la chaîne d'analyse, dans l'ordre ci-dessus
+[ ] définir les variables à droite `rhs` et les éventuels "coarsening" pour que le matching fonctionne poru tout. voir les choix faits par Sehar dans stata.
+[ ] traiter un premier lot de vardep (les logits par ex, plus facile)
+[x] trouver le moyen de récupérer toutes les infos de chaque var dep pour en faire un beau tableau... au pire, csv.
+[ ] ajouter, le cas échéant, les `ologit` à un moment dans la chaîne
+
+** une fois que les rhs sont fixées, il faut adapter la sélection de la population d'enquête et refaire tourner toute la filière d'analyse. et adapter le flowchart**
+
+Var CEM Sehar : 
+chomagepast cspvolr(#0) typmen(#0) edu(#0) fm_sexe(#0) FinSit(#0) age10inc(#0) INCDATEr(#0) L_FV_2017, treatment(Treated)
+
+régression CEM Sehar :  
+logistic L_FV_2017 Treated L_POISS_INC Tabac_INC ALCAB_INC L_FV_INC i.EtatSante_R_INC i.BMICat_INC chomagepast i.cspvol i.typmen i.edu i.fm_sexe i.region i.FinSit i.age10inc i.INCDATEn [iweight=cem_weights]
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(questionr)
+library(glue)
+library(MatchIt)
+library(arsenal) # formulize
+library(broom)
+library(cem)
+library("lmtest") #coeftest
+library("sandwich") #vcovCL
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# début
+
+```{r load}
+data_orig <- readRDS("Data/Cree/HDR6_05b-cc-vardep-long.Rds")
+
+```
+
+
+### formules et fonctions
+```{r fonctions}
+# variables explicatives
+rhs = c("homme", "age_cl", "aveccouple01", "avecenf01", "astopcho", "cspvol", "diffinnow", "prive" , "astopcho" ,"edu", "aq_modvie_refdoc" )
+
+
+# formule appariement
+form_cem <- formulize(y = "traitt",
+											x = c("inc",  rhs))
+#fonctions appariement
+# réaliser l'appariement
+f_cem <- function(df) {
+	MatchIt::matchit(formula = form_cem, data = df, method = "cem")
+	}
+
+# extraire le nb d'individus appariés ou non dans un tibble
+f_cem_summary <- function(matchit_object) {
+	summary(matchit_object)$nn %>% 
+	as_tibble(rownames = "Participants") %>% 
+	rename(Emploi2017 = Control) %>% 
+	rename(Chomage2017 = Treated) %>% 
+	filter(!str_detect(Participants, "(ESS)"))
+} 
+
+# récupérer les données avec les poids CEM
+	# comme on est dans une fonction il faut préciser les données originales
+f_cem_data <- function(matchit_object, original_data) {
+	MatchIt::match.data(matchit_object, 
+											data = original_data)
+	}
+
+#formule modèle d'intérêt
+form_logit <- arsenal::formulize(y = "sui",
+									x = c("inc", "traitt", rhs))
+
+# fonction modèle d'intérêt logit
+f_logit <- function(data){
+	return(
+		glm(formula = form_logit, family = binomial, data = data)
+	)
+}
+
+# modèle logit pondéré par les poids du CEM (weights)
+f_logit_cem <- function(data){
+	# vérifier que weights existe
+	if ( !any(names(data) == "weights") ) {
+		stop("variable de pondération `weights` introuvable")
+	} else {
+		return(
+			glm(formula = form_logit, family = binomial, data = data, weights = weights)
+		)
+	}
+}	
+
+# extraire les coefs du modèle pour vardep à l'inclusion et traitt
+	# fonctionne après les deux fonctions f_logit
+f_mod_coefs<- function(mod) {
+	broom::tidy(mod) %>% 
+		filter(term == "inc" | str_detect(term, "traitt")) %>% 
+		select(term, estimate, p.value)
+}
+
+# extraire les statistiques de qualité du modèle: BIC et le nb d'obs.
+f_mod_stats <-function(mod) {
+	broom::glance(mod) %>% 
+	select(BIC, nobs)
+}
+
+```
+
+### préparer les données
+rappel : 
+-  `inc`et `sui` contiennent la valeur de la variable dépendante (indiquée par `vardep`) à l'inclusion et au suivi. 
+- selon la `vardep`, `inc`et `sui` sont de nature différente : numérique, facteur etc. il faut donc les transformer dans le bon type _après_ avoir sélectionné les variables à analyser et _avant_ d'estimer les modèles. cad maintenant après le `select`.
+
+
+```{r select}
+dflong <- data_orig %>% 
+	select(proj_isp, vardep, inc, sui, traitt, all_of(rhs)) %>% 
+	filter(str_detect(vardep, "_p") | str_detect(vardep, "_i"))	%>%
+	mutate(vardep = droplevels(vardep)) %>% 
+	mutate(sui = as.numeric(sui)) %>%
+	mutate(inc = as.numeric(inc))
+```
+
+### nester les données : un jeu par vardep.
+les cas complets ont été sélectionnés lors de la construction du fichier de données.
+
+```{r nest}
+dfnest <- dflong %>% 
+	group_by(vardep) %>% nest()
+	
+```
+
+# Appariement
+
+### apparier les cas et témoins
+
+```{r map_cem}
+
+cem_nest <- dfnest %>%  
+	mutate(matched = map(data, f_cem)) %>% 
+	mutate(data_cem = map2(matched, data, f_cem_data))
+```
+
+### tableau contenant les infos sur effectifs appariés
+```{r qlte_cem}
+df_qlte_cem <- cem_nest %>%
+	mutate(qualite_cem = map(matched, f_cem_summary)) %>% 
+	select(-data, -matched, -data_cem) %>% 
+	 unnest(qualite_cem)
+
+filter(df_qlte_cem, Participants =="Unmatched")
+```
+
+# modèles
+
+### estimer
+
+```{r map_logit, message=FALSE}
+models_nest <- cem_nest %>% 
+	select(vardep, data_cem) %>% 
+	mutate(model_naif = map(data_cem, f_logit) ,
+				 model_cem = map(data_cem, f_logit_cem) ) 
+
+```
+### sortir les résultats
+
+```{r unnest_results}
+df_glance <- models_nest  %>% 
+	mutate(glance_naif = map(model_naif, f_mod_stats),
+				 glance_cem = map(model_cem, f_mod_stats)
+				 ) %>%
+	select(vardep, starts_with("glance")) %>% 
+	unnest(starts_with("glance"), names_sep = "_") 
+
+df_coefs <- models_nest %>% 
+		mutate(coefs_naif = map(model_naif, f_mod_coefs),
+					 coefs_cem = map(model_cem, f_mod_coefs)
+					 ) %>% 
+		select(vardep, starts_with("coefs")) %>% 
+	unnest(starts_with("coefs"), names_sep = "_") %>% 
+	select(-coefs_cem_term)
+
+```
+
+```{r resume}
+
+df_coefs %>%  filter(coefs_naif_term == "traittPerdu emploi") %>% 
+select(vardep, ends_with("p.value"))
+
+```
+
+
+
+# bidouille
+
+
+```{r tester, eval = FALSE}
+# ce chunk permet de tester les fonctions sur un élément du jeu entier.
+
+testdf <-  pluck(dfnest,"data", 1)
+	# pas encore trouvé comment explicitement sélectionner la ligne "alc_p"
+
+matched <- f_cem(testdf)
+res_cem <- f_cem_summary(matched)
+df_cem <- matched %>% f_cem_data( original_data = testdf)
+fit1 <- df_cem %>%  f_logit()
+fit2 <- df_cem %>%  f_logit_cem()
+c1 <- fit1 %>%   f_mod_coefs
+c2 <- fit2 %>%  f_mod_coefs
+s1 <- fit1 %>% f_mod_stats()
+s2 <- fit2 %>% f_mod_stats()
+
+```
+
+```{r bidouille, eval = FALSE}
+
+cem_nest <- dfnest %>% 
+	mutate(matched = map(data, f_cem),
+				data_cem = map2(matched, data, f_cem_data))
+	
+foo <- dfnest %>% map(data, names)
+
+dflong %>% 
+	split(.$vardep) %>% 
+	map(~ glm(sui ~ inc + traitt, data = .))
+ 	
+ 	
+ 	
+	mutate(bar = 	map(matched, f_cem_summary)) %>% 
+	map_dfr( print)
+
+
+```
+
+
+	
+	map(summary) %>% 
+	map_dbl("aic")
+
+
+
+### Fonctions écrites mais que j'ai remplacées par d'autres meilleures
+
+```{r oldthings, eval = FALSE}
+# fonction modèle d'intérêt logit
+f_logit <- function(data){
+	return(
+		glm(formula = form_logit, family = binomial, data = data)
+	)
+}
+
+#coef à extraire
+	f_coef <- function(mod) {
+		coef(mod)["inc", "Estimate"]
+	}
+	
+f_logitw <- function(data, weight_variable = NULL){
+	if(	is.null(weight_variable) ) {
+		glm(formula = form_logit, family = binomial, data = data)
+	}
+	else {
+	glm(formula = form_logit, family = binomial, data = data, weights = weight_variable)
+	}
+}
+
+
+```

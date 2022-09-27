@@ -1,0 +1,534 @@
+---
+title: "07-graph-evolution"
+author: "Marie Plessz"
+date: "07/12/2020"
+output: html_document
+---
+
+
+##objectif
+graphique des évolutions des pratiques intensives, selon le traitement (cad selon qu'en emploi ou chômeur en 2017).
+
+Je pars du fichier préparé en `05b-import-propsectif.Rmd`.
+
+J'ai choisi de représenter à la fois le fait de *fumer** et le fait de fumer de façon intensive.
+**nb** : si je dois reprendre ces graphiques, pour mettre tous les éléments (layers) communs au graphe dans un objet, voici la technique (il faut descendre un peu sru la page) : [https://stackoverflow.com/questions/18747091/reuse-ggplot-layers-in-multiple-plots](https://stackoverflow.com/questions/18747091/reuse-ggplot-layers-in-multiple-plots)
+
+```{r setup, include=FALSE}
+library(haven)
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(questionr)
+library(glue)
+library(ggpubr)
+knitr::opts_chunk$set(echo = TRUE)
+
+tag <- "07-graph-evolution"
+
+```
+
+# données,  fonctions,  labels communs
+
+```{r load}
+data_orig <- readRDS( "Data/Cree/HDR6_05b-cc-vardep-long.Rds") 
+
+# fonction pour le début, commun à différents graphiques
+f_pivot <- function(df, vars) {
+	df %>% 
+		pivot_longer(cols = c(inc, sui), names_to = "Phase", values_to = "value") %>% 
+		select(proj_isp, vardep, Phase,  traitt, value) %>% 
+		filter(vardep %in% varlist) %>%   
+		mutate_at(vars(vardep, Phase, traitt), as.factor)	
+}
+
+```
+
+==> si je dois changer l'ordre : mettre les vars dans l'ordre qui me convient, générer une var  = au rang dans le tableau, et l'appeler ordre.
+
+On ne traite pas la variable value à ce stade, elle doit rester character, car elle contient aussi bien les valeurs numériques (fum_n, alc_n) que les valeurs "facteur" (jamais, 1/semaine etc).
+
+```{r labels}
+
+effectifs_complets <- readRDS("Doc/HDR6_05b-vardep-effectifs-complets.Rds")
+
+# ajouter les infos contenues dans le petit tableau csv importé au début, et composer le titre 
+labels_vars<- tribble(
+	~vardep, 	~vartitre, 		~intense, 			~ordre,
+	"alc_i",	"Alcool", 		"2 verres/jour",	5,
+	"fum_i",	 "Cigarettes", 	"10/jour", 			8,
+	"fum_p",	 "Fumeur", 		"Oui",				7,
+	"leg_i",	 "Légumes" , 	"1/jour",			1,
+	"poi_i",	 "Poisson" , 	"2/semaine",		2,
+	"vro_i",	 "Viande rouge","4/semaine",		3,
+	"sod_i",	 "Boissons sucrées", "1/semaine",	6,
+	"fas_i",	 "Fastfood" , 	"1/semaine",		4,
+	"bmi_i",	 "Corpulence" , "Obèse",			9,
+	"san_i",	 "Mauvaise santé", "1-5/8",			10
+) 	%>% 
+	rename("vardep_i" = "vardep") %>% 
+	mutate(vardep_o = str_replace(vardep_i, "_i", "_o")) %>% 
+	mutate_at(vars(vartitre, vardep_i, vardep_o), as.character) %>% 
+	pivot_longer(cols = starts_with("vardep"), names_to = "truc", values_to = "vardep", names_prefix = "vardep") %>% 
+	select(-truc) %>% 
+	right_join(effectifs_complets, by = "vardep") %>% 
+	arrange(ordre)  %>%
+	mutate_at(vars(vartitre, vardep), as.character) %>% 
+	mutate_at(vars(vartitre, vardep), fct_inorder) 
+
+```
+
+# graphiques évolutions
+
+### Préparer les data au format long et avec les moyennes
+
+```{r moyennes}
+varlist <- unique(data_orig$vardep) %>% str_subset("_i")
+varlist <- c(varlist , "fum_p")
+
+dfl <- f_pivot(data_orig, vars = varlist)  %>% 
+
+# calculer les moyennes par phase * traitement * variable	
+	
+	mutate(intense = as.numeric(value)) %>% 
+	group_by(vardep, Phase, traitt ) %>% 
+	summarise(pct = mean(intense)) 
+
+```
+
+Variables retenues : `r varlist`.
+
+### titres
+
+Le package `glue` me permet de composer le titre à partir du contenu des variables.
+
+J'importe les effectifs stockés dans un objet à l'étape `05b-import-propsectif.Rmd`
+
+Ensuite, je passe le `titre` en facteur et je l'ordonne d'après la variable `ordre`.
+
+
+
+```{r titres}
+
+df_titre <- labels_vars %>% 
+	filter(vardep %in% varlist) %>%  
+
+	mutate(titre = glue("{vartitre}: {intense} (n= {n})")) %>%
+	mutate(titre = as.factor(titre)) %>% 
+	arrange(ordre)  %>% 
+	select(vardep, vartitre, titre) 
+
+# ordre des levels de titre
+df_titre$titre <- fct_inorder(df_titre$titre)
+
+# ajouter  les titres aux données 
+df_graph <- dfl %>% 
+	left_join(df_titre, by = "vardep") %>% 
+		mutate_at(vars(vardep, Phase, traitt), as.factor) %>% 
+	mutate(Phase = fct_recode(Phase, 
+														 "Inclusion" = "inc", 
+														"2017" = "sui"  )) 
+
+var_label(df_graph) <- list(traitt = "En 2017")
+
+
+
+```
+
+###  Graphique
+
+Pour grouper des lignes il faut **à la fois** les options `color`et `group`.
+
+Le nom du fichier dans lequel est sauvé le graphique est composé au début du fichier, d'après mon `tag`.
+
+```{r evolutions, fig.width=6, fig.height=9 }
+
+footnote <- glue("Note: Cigarettes: à l'inclusion, moyenne sur l'ensemble des périodes où la personne a fumé. \n\n
+					Programme : {tag}.Rmd") 
+
+gr_evolutions <- 
+	df_graph %>% 	ggplot() +
+		geom_line(aes(x = Phase, y =  pct, group = traitt, color = traitt),
+							stat = "identity") + 
+	scale_color_grey() +
+	 geom_point(aes(x = Phase, y =  pct, shape = traitt))	+
+		facet_wrap(~ titre, scales = "fixed", ncol = 2 )  +
+		theme_bw() +
+	ylab("") +
+		scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, NA)) +
+		theme(legend.position = "bottom", 
+			#	legend.title = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+		labs(caption = str_wrap(footnote, 80)) +
+	  guides(color=guide_legend("Situation en 2017 :")) +
+	  guides(shape=guide_legend("Situation en 2017 :")) 
+	
+
+print(gr_evolutions)
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-01-selon-emploi-2017.png")
+myjpg <- glue("Resultats/{tag}-01-selon-emploi-2017.jpg")
+ggsave(myfile, plot = gr_evolutions, width = 6, height = 9)
+ggsave(myjpg, plot = gr_evolutions, width = 6, height = 9)
+```
+
+# Distribution vars détaillées
+
+## Alimentation
+
+```{r distrib }
+# liste des variables représentées
+varlist <- unique(data_orig$vardep) %>% str_subset("_o")
+
+# modalités des fréquences par ordre croissant
+list_ordre_freq <- c( "Jamais", 
+																			 "<1/semaine", 
+																			 "Max 1/semaine" ,
+																				"1/semaine",
+																			  "Min 1/semaine",
+																			"2-3/semaine",
+																			 "Min 2/semaine" ,
+																			 "Min 4/semaine",
+																			 "4-6/semaine" , 
+																			   "Min 1/jour"   
+																			 )
+
+dfl2 <- f_pivot(data_orig, vars = varlist) %>% 
+	mutate(value = as.factor(value)) %>% 
+		mutate(value = fct_recode (value, "<1/semaine" = "< 1/semaine")) %>% 
+	mutate(value = fct_relevel(value, list_ordre_freq )) %>% 
+	group_by(vardep, Phase,  value ) %>% 
+		count (name = "cat") %>% 
+	group_by(vardep, Phase ) %>% 
+	mutate(total = sum(cat)) %>% 
+	mutate(pct = cat / total ) %>% 
+
+
+	left_join(labels_vars, by = "vardep") %>% 
+	select(-intense) %>% 
+	mutate(Phase = fct_recode(Phase, "Inclusion" = "inc",
+														"2017" = "sui"))
+	
+```
+
+### Graphique
+
+```{r alim,  fig.width=6, fig.height=3}
+
+dfl2 %>% filter(vartitre %in% c(  "Légumes", "Poisson", "Viande rouge",  "Fastfood")) %>% 
+ 	ggplot() +
+	geom_bar(aes(x = value, y = pct, fill = Phase),
+						stat = "identity", position = position_dodge(width = 0.5)) + 
+	ylab("") +
+	scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+	xlab("Fréquence de consommation") +
+	facet_grid(cols = vars(vartitre),
+						 scales = "free") +
+	theme_bw() +
+	scale_fill_grey() +
+	theme(legend.position = "bottom", 
+				legend.title = element_blank(),
+								panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+	 theme(text = element_text(size=8),
+        axis.text.x = element_text(angle=90, hjust=1))
+	labs(caption = glue("Programme : {tag}.Rmd"))
+
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-alim.png")
+
+ggsave(myfile, width = 6, height = 3)
+
+```
+### chiffres pour texte
+
+```{r}
+# Poisson
+
+ dfl2 %>% filter(vardep == "leg_o" & Phase == "Inclusion" )  %>% 
+	select(-cat, -total, -ordre, -n)
+
+dfl2 %>% filter(vardep == "poi_o" & Phase == "Inclusion" ) %>% 
+	select(-cat, -total, -ordre, -n)
+
+dfl2 %>% filter(vardep == "fas_o" & Phase == "Inclusion" ) %>% 
+	select(-cat, -total, -ordre, -n)
+
+ dfl2 %>% filter(vardep == "alc_o" & Phase == "Inclusion" )  %>% 
+	select(-cat, -total, -ordre, -n)
+ 
+
+```
+
+
+## Boisson
+
+```{r soda,  fig.width=3, fig.height=3}
+
+g_soda <- dfl2 %>% filter(vardep %in% c("sod_o")) %>% 
+ 	ggplot() +
+	geom_bar(aes(x = value, y = pct, fill = Phase),
+						stat = "identity", position = position_dodge(width = 0.5)) + 
+	ylab("") +
+	 scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+	xlab("Fréquence de consommation") +
+		theme_bw() +
+	scale_fill_grey() +
+	theme(legend.position = "bottom", 
+				legend.title = element_blank(),
+								panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+	 theme(text = element_text(size=8)) # +
+#	labs(caption = glue("Programme : {tag}.Rmd"))
+
+
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-soda.png")
+
+ggsave(myfile, width = 3, height = 3)	
+
+```
+
+
+
+```{r alcool,  fig.width=4, fig.height=3}
+varlist <- "alc_n"
+df_alc <- f_pivot(data_orig, varlist) %>% 
+	mutate(value = as.numeric(as.character(value))) %>% 
+	mutate(value = if_else(value<10, value, 10 )) %>% 
+	mutate(value = if_else(value == 0, -1, value )) %>% 
+	mutate(value = labelled(value, c("10 ou +" = 10)))  %>% 
+	mutate(Phase = fct_recode(Phase, "Inclusion" = "inc",
+														"2017" = "sui"))
+
+summary(df_alc$value)
+dim(df_alc[df_alc$Phase == "Inclusion", ])
+
+
+# foo2 <- foo %>% filter(Phase == "inc") %>% 
+# 	mutate(v0 = case_when( value == 0 ~ "n0",
+# 												 is.na(value) ~ "mqt",
+# 												TRUE ~ as.character(value) ))
+
+
+g_alc <- df_alc %>% 
+ 	ggplot() +
+	geom_histogram(aes(x = value, y = ..density.., fill = Phase)							 ,
+					 position = position_dodge(width = 0.5),
+					 binwidth = 1) + 
+	xlim(c(-0.5, 11)) +
+	scale_x_continuous(breaks = c(-1, 0, 1:9, 10), labels = c(0, "<1", 1:9, "10 ou +") ) +
+	ylab("") +
+	xlab("Verres/jour") +
+ scale_y_continuous(labels = scales::percent_format(accuracy = 1)) 	+
+		theme_bw() +
+	scale_fill_grey() +
+	theme(legend.position = "bottom", 
+				legend.title = element_blank(),
+				panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+	 theme(text = element_text(size=8))
+#	labs(caption = glue("Programme : {tag}.Rmd"))
+	
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-alcool.png")
+
+ggsave(myfile, width = 4, height = 3)	
+```
+
+```{r boisson ,  fig.width=6, fig.height=3}
+g_soda <- g_soda + ggtitle("Boissons sucrées")  +
+	 theme(text = element_text(size=10))
+g_alc <- g_alc + ggtitle("Boissons alcoolisées")  +
+	 theme(text = element_text(size=10))
+
+myfile <- glue("Resultats/{tag}-soda-alcool.png")
+
+g_boiss <- ggpubr::ggarrange(g_soda, g_alc, common.legend = TRUE,  widths = c(2,3), legend="bottom")
+g_boiss %>% 
+	ggpubr::ggexport(filename = myfile, width = 8*72, height = 3*72)
+```
+
+
+## Tabac
+ la variable `fum_control` et `fum_p` portent sur "fumer du tabac".
+ 
+ le nb de cigarettes porte sur les cigarettes uniquement.
+ 
+ ### d'abord combien ont commencé ou recommencé à fumer?
+```{r fum_traj}
+foo <- data_orig %>% filter(vardep == "fum_p") %>%  select(sui, fum_control ) %>% 
+	mutate(sui = fct_recode(sui, "Fume en 2017" = "1", "Ne fume pas en 2017" = "0")) %>% 
+	group_by(fum_control, sui)
+
+# arrêts et reprise
+foo %>% 
+	count %>% 
+	kable( col.names = c("A l'inclusion", "En 2017", "n"))
+
+lprop(table(foo$fum_control, foo$sui)) %>%  kable(digits = 1)
+
+ data_orig %>% filter(vardep == "fum_n") %>%  select(proj_isp, sui, inc, fum_control) %>% 
+	group_by(fum_control) %>% 
+	summarise_at(vars(inc, sui), min) %>% 
+ 	kable(col.names = c("inclusion", "min(fum_n_inc)", "min(fum_n_sui)"))
+
+```
+`fum_p` vaut 0 si `fum_control` = Non-fumeur.
+
+En revance le nb de cigarettes fumées est manquant si `fum_control` = Non-fumeur.
+ 
+ 
+```{r cig}
+
+# fum_control pour tout le monde.
+df_control <- data_orig %>% filter(str_detect(vardep, "fum"))	%>%
+	select(proj_isp, fum_control, inc, sui, vardep) %>%
+		pivot_longer(cols = c(inc, sui), names_to = "Phase", values_to = "value") %>% 
+	filter(vardep == "fum_p") %>% 
+	select(-vardep, -value)
+
+freq(df_control$fum_control, total = T)
+
+
+varlist <- c("fum_n")
+df_cig <- data_orig %>% 
+	f_pivot( varlist) %>% 
+	right_join(df_control, by = c("proj_isp", "Phase"))  %>% 
+		mutate_at(vars(vardep, Phase, traitt), as.factor) %>% 
+	mutate(Phase = fct_recode(Phase, "Inclusion" = "inc",
+														"2017" = "sui"))  	%>% 
+	mutate(value = as.numeric(as.character(value))) %>% 
+# si jamais fumé, value = -1	
+	mutate(valcig = case_when((fum_control == "Non fumeur" & is.na(value)) ~ -2,
+														TRUE ~ value )) 
+# pour vérifier
+		# df_cig %>% 
+		# group_by(value, valcig) %>%  count
+# test qu'on a le bon nb de lignes à l'inclusion
+stopifnot(
+	dim(df_cig[df_cig$Phase == "Inclusion", ])[[1]] == dim(df_control[df_control$Phase == "inc", ])[[1]]
+	)
+
+# graph
+df_cig %>% 
+	mutate(valcig = if_else(valcig<20, valcig, 20 )) %>% 
+ 	ggplot() +
+	geom_histogram(aes(x = valcig, y = ..density.., fill = Phase, group = Phase) ,
+					 position = position_dodge(width = 0.5),
+					 binwidth = 1) + 
+	xlim(c(-3, 21)) +
+	scale_x_continuous(breaks = c(-2, 0, 5, 10, 20), 
+										 labels = c("Jamais \n fumé", 0, 5, 10 , "20 ou + ")) +
+	ylab("") +
+	xlab("Cigarettes/jour") +
+ scale_y_continuous(labels = scales::percent_format(accuracy = 1)) 	+
+		theme_bw() +
+	scale_fill_grey() +
+	theme(legend.position = "right", 
+				legend.title = element_blank(),
+				panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+	 theme(text = element_text(size=8))
+	labs(caption = glue("Programme : {tag}.Rmd"))
+	
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-cig.png")
+
+ggsave(myfile, width = 4, height = 2)	
+
+```
+# Graphique supplémentaire alim x phase x traitt
+
+```{r extraleg, fig.width=6, fig.height=4}
+varlist <- unique(data_orig$vardep) %>% str_subset("_o")
+dfl3 <- f_pivot(data_orig, vars = varlist) %>% 
+	mutate(value = as.factor(value)) %>% 
+	mutate(value = fct_recode (value, "<1/semaine" = "< 1/semaine")) %>% 
+	mutate(value = fct_relevel(value, list_ordre_freq)) %>% 
+	group_by(vardep, Phase, traitt, value ) %>% 
+	count (name = "cat") %>% 
+	group_by(vardep, Phase, traitt ) %>% 
+	mutate(total = sum(cat)) %>% 
+	mutate(pct = cat / total ) %>% 
+	mutate(value = fct_recode (value, "<1/semaine" = "< 1/semaine")) %>% 
+
+	left_join(labels_vars, by = "vardep") %>% 
+	select(-intense) %>% 
+	mutate_at(vars( traitt), as.factor) %>% 
+	mutate(Phase = fct_recode(Phase, "Inclusion" = "inc",
+														"2017" = "sui")) %>%
+	filter(vartitre %in% c(  "Légumes", "Poisson", "Viande rouge",  "Fastfood")) 
+
+
+
+dfl3 %>% 
+	ggplot() +
+	geom_bar(aes(x = value, y = pct, fill = Phase),
+					 stat = "identity", position = position_dodge(width = 0.5)) + 
+	ylab("") +
+	scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+	xlab("Fréquence de consommation") +
+	facet_grid(cols = vars(vartitre), rows = vars(traitt),
+						 scales = "free") +
+	theme_bw() +
+	scale_fill_grey() +
+	theme(legend.position = "bottom", 
+				legend.title = element_blank(),
+				panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				plot.caption = element_text(hjust = 0)) +
+	theme(text = element_text(size=8),
+				axis.text.x = element_text(angle=90, hjust=1)) +
+labs(caption = glue("Programme : {tag}.Rmd"))
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-alim-traitt.png")
+
+ggsave(myfile, width = 6, height = 4)	
+
+```
+
+### graphiques évoluions faible conso
+```{r evolfaible, fig.width=6, fig.height=9 }
+varlist <- unique(data_orig$vardep) %>% str_subset("_f")
+
+df_faible <- f_pivot(data_orig, vars = varlist)  %>% 
+
+# calculer les moyennes par phase * traitement * variable	
+	
+	mutate(faible = as.numeric(value)) %>% 
+	group_by(vardep, Phase, traitt ) %>% 
+	summarise(pct = mean(faible)) 
+
+df_faible %>% 	ggplot() +
+	geom_line(aes(x = Phase, y =  pct, group = traitt, color = traitt),
+						stat = "identity") + 
+scale_color_grey() +
+ geom_point(aes(x = Phase, y =  pct, shape = traitt))	+
+	ylab("Pratique faible")  +
+	facet_wrap(~ vardep, scales = "fixed", ncol = 2 )  +
+	theme_bw() +
+	scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, NA)) +
+	theme(legend.position = "bottom", 
+				legend.title = element_blank(),
+				plot.caption = element_text(hjust = 0))
+
+# nom du fichier de sortie:
+myfile <- glue("Resultats/{tag}-evol-faible.png")
+
+ggsave(myfile, width = 6, height = 7)	
+
+
+```
+
+

@@ -1,0 +1,126 @@
+---
+title: "07-props-graph-evolutions"
+author: "Marie Plessz"
+date: "01/12/2020"
+output: github_document
+---
+
+# graphiques des évolutions des pratiques inclusion 2017
+
+Le début pourrait être commun à plusieurs programmes, envisager de l'isoler dans un script commun.
+
+JE voulais faire un damier (facet) de 4 graph, deux pour l'alcool, 2 pour le tabac, mais c'est plus compliqué que ça.
+1/ la facet n'est pas facile à apprivoiser
+
+2/ mes variables "à risque" ne sont pas comparable pour tabac et alcool pour alcool c pas oui non, c déjà une question d'intensité. alors que pour tabac c : occasionnel vs tous les jours.
+
+Il se peut que je n'ai pas pris la bonne var pour le tabac. elle y est. retour à Stata
+
+
+
+```{r setup, include=FALSE}
+library(haven)
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(questionr)
+library(glue)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+#tag
+tag <- "06-prosp-tableau-compare"
+```
+
+
+# préparer les données
+```{r dataprep}
+data_orig <- read_dta("Data/Cree/HDR6_04_prosp_studypop.dta")
+
+df <- data_orig %>% 
+	select(proj_isp, y, traitt, homme, aq_modvie_refdoc, ends_with("_inc"), ends_with("_sui"))
+
+# isoler les noms des vars à traiter comme des facteurs
+to_factor <- df %>%
+	select(matches("_o_"), traitt, homme, aq_modvie_refdoc) %>% 
+		map_lgl(is.numeric) %>%
+		names
+
+# traiter les facteurs
+df <- df %>% 
+	mutate_at(to_factor, as_factor) %>% 
+	mutate_if(is.factor, fct_drop)  %>%  # se débarrasser des levels vides
+## jusque là commun avec le dofile 06
+
+
+# recodages 
+	rename(y_incl = y ) %>% 
+	mutate(aq_modvie_refdoc = ordered(aq_modvie_refdoc, levels = c("I1", "I2", "I3"))) 
+
+var_label(df) <- list(
+	y_incl = "Année d'inclusion",
+	aq_modvie_refdoc = "Ref questionnr inclusion",
+	traitt = "Statut 2017")
+
+```
+
+```{r pivotlonger}
+
+dfl <- df %>%  pivot_longer(cols = c(ends_with("_inc"), ends_with("_sui")),
+							names_to = c( ".value", "Phase"),
+							names_pattern = "(.+)_(.+)") %>% 
+	mutate(Phase = fct_recode(Phase, "Inclusion" ="inc",
+														 "2017" = "sui")) %>% 
+	mutate(Phase = relevel(Phase, ref = "Inclusion" ))
+```
+
+
+# distribution des années d'inclusion
+```{r}
+dfl  %>%  filter(Phase == "Inclusion")  %>%
+		ggplot() +
+		geom_bar(aes (x =y_incl, fill = aq_modvie_refdoc) ) +
+	theme_minimal()
+
+table(df$aq_modvie_refdoc, df$traitt)
+```
+
+
+```{r}
+df_graph <- dfl %>% 
+	select(proj_isp, alc_r, fum_r, alc_n, fum_n, Phase, traitt) %>% 
+	mutate_at(vars(contains("_r")), ~ (. * 100 ))  %>% 
+	pivot_longer(cols = c(contains("_r"), contains("_n")) ,
+							 names_to = "vardep",
+							 values_to = "value")
+
+foo <- df_graph %>% 
+	group_by(proj_isp, vardep) %>% 
+	summarise(pb = sum(is.na(value))) %>% 
+	filter(pb == 0)
+
+titres <- foo %>%  
+	group_by(vardep, pb) %>% 
+	count() %>% 
+	rename(complets = n) %>% 
+	mutate(titre = glue("{vardep} (n= {complets})"))  %>% 
+	select(vardep, titre)
+
+df_graph <- inner_join(df_graph, foo, by = (c("proj_isp", "vardep"))) %>% 
+	left_join(titres, by = "vardep") %>% 
+	mutate(vardep = fct_relevel(vardep, c("alc_r", "fum_r", "alc_n", "fum_n")))
+	
+
+# vérifier que les effectifs complets calculés sont bons:
+sum(titres$complets) * 2 == dim(df_graph)[[1]]
+
+
+df_graph %>% 
+	ggplot() +
+	geom_line(aes(x = Phase, y =  value, group = traitt, color = traitt),
+						stat = "summary", fun= "mean") +
+	ylab("Consommation à risque (%)")  +
+	facet_wrap(~ titre ) 
+
+```
+

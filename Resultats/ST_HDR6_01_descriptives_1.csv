@@ -1,0 +1,122 @@
+Caractéristiques des personnes en emploi et au chômage à l'inclusion dans Constances
+;En emploi;Demandeur d'emploi sans emploi;Total;N
+;%;%;%;
+Sexe: homme?;;;;
+Femme;53.3;54.1;53.4;74,474
+Homme;46.7;45.9;46.6;65,045
+Total;100.0;100.0;100.0;139,519
+
+Classe d'age inclusion;;;;
+18-29 ans;11.4;24.3;12.4;17,262
+30-39 ans;27.0;25.4;26.9;37,540
+40-49 ans;31.3;22.5;30.6;42,759
+50 ans et plus;30.3;27.8;30.1;41,958
+Total;100.0;100.0;100.0;139,519
+
+Conjoint en emploi?;;;;
+Sans conjoint;23.4;43.9;24.9;33,025
+Cjt en emploi;65.4;38.8;63.4;83,941
+Cjt Sans emploi;11.2;17.2;11.7;15,458
+Total;100.0;100.0;100.0;132,424
+
+Vit avec enfants? 0/1;;;;
+EnfantNON;40.9;58.6;42.2;56,104
+EnfantOUI;59.1;41.4;57.8;76,909
+Total;100.0;100.0;100.0;133,013
+
+Diplome 5 cat bas;;;;
+BEPC ou inf;5.3;12.2;5.9;8,075
+BEP CAP;12.9;17.8;13.3;18,309
+Bac;14.6;21.1;15.1;20,832
+Bac +2 ou +3;28.7;22.3;28.3;38,923
+Bac +4 ou plus;38.4;26.7;37.5;51,622
+Total;100.0;100.0;100.0;137,761
+
+Jamais travaillé>6mois (CP)?;;;;
+DejaTrav;99.6;91.1;98.9;138,008
+JmsTrav;0.4;8.9;1.1;1,511
+Total;100.0;100.0;100.0;139,519
+
+Santé: declare min 1 arret>6mois;;;;
+AStopSantéNON;95.7;90.9;95.3;132,942
+AStopSantéOUI;4.3;9.1;4.7;6,577
+Total;100.0;100.0;100.0;139,519
+
+CSP actuelle ou plus longue;;;;
+Agric, Indep, Autre;4.7;10.1;5.1;6,990
+Cadre, prof. intell. sup.;34.5;20.7;33.5;45,526
+Profession intermediaire;28.8;14.1;27.7;37,671
+Employe;23.9;34.9;24.7;33,595
+Ouvrier;8.1;16.8;8.7;11,871
+Sans profession;0.0;3.3;0.2;327
+Total;100.0;100.0;100.0;135,980
+
+CSP pere pdt adolescence;;;;
+Non concerne/mqt;5.0;8.6;5.2;7,302
+Agriculteur exploitant;6.3;4.5;6.2;8,618
+Artisant, commercant, chef d'entreprise;12.1;13.9;12.2;17,052
+Cadre, profession intellectuelle superieure;21.9;19.9;21.8;30,356
+Profession intermediaire;16.7;11.6;16.3;22,804
+Employe;11.7;11.9;11.7;16,324
+Ouvrier;24.2;26.0;24.4;33,988
+hors emploi/autre;2.1;3.6;2.2;3,075
+Total;100.0;100.0;100.0;139,519
+
+Revenus de proches/fam: coché;;;;
+ArgentFamNON;98.9;95.1;98.6;137,626
+ArgentFamOUI;1.1;4.9;1.4;1,893
+Total;100.0;100.0;100.0;139,519
+
+Revenus du chomage: coché;;;;
+AllocChoNON;97.9;35.5;93.1;129,830
+AllocChoOUI;2.1;64.5;6.9;9,689
+Total;100.0;100.0;100.0;139,519
+
+Difficultes financieres actuelt;;;;
+DiffFinMoisNON;89.7;69.0;88.2;121,078
+DiffFinMoisOUI;10.3;31.0;11.8;16,224
+Total;100.0;100.0;100.0;137,302
+
+Revenu mensuel/UC (mis=.);;;;
+RevUC_-700E;2.1;20.7;3.5;3,860
+RevUC_700-1200E;9.0;26.1;10.3;11,182
+RevUC_1200-1800E;25.9;29.0;26.1;28,460
+RevUC_1800+E;63.0;24.3;60.1;65,528
+Total;100.0;100.0;100.0;109,030
+
+Senti que je n'avais pas d'entrain? (CESD);;;;
+JMSPasEntrain;50.1;43.2;49.6;66,452
+PFSPasEntrain;38.1;37.0;38.0;50,976
+SVTPasEntrain;11.8;19.8;12.4;16,644
+Total;100.0;100.0;100.0;134,072
+
+Taille U. urbaine;;;;
+TailleUrb<10k;29.4;23.7;29.0;40,424
+TailleUrb_10k-100k;17.0;17.7;17.1;23,804
+TailleUrb_200k-2millions;36.1;36.7;36.2;50,471
+Paris_Agglo;17.4;21.9;17.8;24,818
+Total;100.0;100.0;100.0;139,517
+
+Nb valeurs manquantes hors rev;;;;
+0;71.8;65.3;71.3;99,543
+1;20.9;21.8;21.0;29,317
+2;5.1;8.0;5.3;7,385
+3;0.9;2.3;1.0;1,449
+4;0.7;1.0;0.7;1,034
+5;0.2;0.4;0.2;308
+6;0.3;0.9;0.3;438
+7;0.0;0.2;0.0;45
+Total;100.0;100.0;100.0;139,519
+
+MDV dtremp regroupee;;;;
+2012;4.0;3.3;3.9;5,497
+2013;9.1;8.0;9.0;12,537
+2014;11.6;15.8;11.9;16,661
+2015;14.2;16.0;14.4;20,056
+2016;16.4;16.1;16.4;22,904
+2017;18.1;19.1;18.2;25,393
+2018;17.4;15.2;17.2;24,064
+2019;9.1;6.5;8.9;12,404
+2020;0.0;0.0;0.0;3
+Total;100.0;100.0;100.0;139,519
+

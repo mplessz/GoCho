@@ -1,0 +1,187 @@
+---
+title: "06-prosp-tableau-compare"
+author: "Marie Plessz"
+date: "05/11/2020"
+output:
+  github_document: default
+---
+
+```{r setup, include=FALSE}
+library(haven)
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(gtsummary)
+library(gt)
+library(questionr)
+library(glue)
+
+# dossier de référence est toujours le dossier racine
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file() )
+
+#options pour les nombres
+options(OutDec= ","  ,
+				encoding = "utf-8",
+				digits = 1)  
+
+# espace après les milliers
+knitr::knit_hooks$set(inline = function(x) {   if(!is.numeric(x)){     x   }else{    prettyNum(round(x,2), big.mark=",")    } }) 
+
+# options générales pour le package gtsummary
+ set_gtsummary_theme(theme_gtsummary_compact()) 
+theme_gtsummary_language(  language =  "fr")
+
+#tag
+tag <- "06-prosp-tableau-compare"
+
+```
+
+
+# préparer les données
+```{r dataprep}
+data_orig <- read_dta("Data/Cree/HDR6_04_prosp_studypop.dta")
+
+# isoler les noms des vars à traiter comme des facteurs
+to_factor <- data_orig %>%
+	select( -age,  -proj_isp, -fm_per_inclusion, -traveffr) %>% 
+	select( -matches("_c_")) %>% 
+	select( -matches("_n_") )%>% 					 	
+	map_lgl(is.numeric) %>%
+		names
+
+# traiter les facteurs
+df <- data_orig %>% 
+	mutate_at(to_factor, as_factor) %>% 
+	mutate_if(is.factor, fct_drop) %>% 
+		# se débarrasser des levels vides
+	rename(y_incl = y ) # évite ambiguités
+
+# variables binaires converties en type "logique"
+	# les sélectionner
+to_lgl <-df %>%
+	select_if(~length(levels(.))==2) 	%>% 
+	map_lgl(is.numeric) %>%
+		names
+
+	# créer les variables binaires. pour l'instant elles ont le même nom dans un autre objet.
+
+# ATTENTION : suppose que 1 est toujours la modalité "oui"
+
+lg <- data_orig %>% select(proj_isp, all_of(to_lgl) ) %>% 
+	mutate_at(vars(all_of(to_lgl)), ~if_else(. == 1, "T", "F") ) %>% 
+	mutate_at(vars(all_of(to_lgl)), as.logical ) 
+
+	# join en renommant les logiques
+df <- left_join(df, lg, by= "proj_isp", suffix = c("", "_l"))
+
+df$traveffr_c<- as.numeric(as.character(df$traveffr))
+
+```
+
+```{r labels}
+
+# labels
+var_label(df) <- list(homme_l = "Homme", 
+								 aveccouple01_l = "Vit en couple",
+								 avecenf01_l = "Vit avec enfant(s)",
+								 diffinnow_l = "Difficultés financières",
+								 age_cl = "Tranche d'âge",
+								 tuu2012_cl = "Taille unité urbaine",
+								 edu = "Diplôme",
+								 prive_l = "Secteur privé",
+								 astopsante_l = "A eu arrêts >6 mois (santé)",
+								 astopcho_l = "A eu arrêts >6 mois (chômage)",
+								 traveffr_c = "Effort physique au travail (max=14)"
+								 )
+```
+
+
+# tableau caractéristiques cas et temoins 
+J'utilise le package `gtsummary`.
+
+```{r table, message=FALSE, warning=FALSE, echo= FALSE, result = "asis"}
+
+t1 <- df %>% select(homme_l, aveccouple01_l, avecenf01_l, 
+							age_cl, 
+							edu,  cspvol,  prive_l, diffinnow_l, astopcho_l,
+							astopsante_l, traveffr_c, traitt )  %>% 
+		tbl_summary(
+			by = traitt,
+			missing_text = "N manquantes",
+			statistic = list(all_categorical() ~ "{p}%",
+											 all_continuous() ~ "{mean} ({sd})",
+											 all_integer() ~ "{mean} ({sd})"),
+			digits = all_categorical() ~ 1  # nb de décimales
+			) %>% 
+	modify_header(
+		stat_by = "**{level} en 2017** \n\n (N = {n})" 	) %>%
+  modify_header(
+    update = list(
+      label ~ "**Caractéristiques à l'inclusion**"  ) ) %>% 
+	  modify_footnote(
+    update = starts_with("stat") ~ 
+      "Statistiques prépsentées: % en colonnes. Pour l'effort physique: moyenne (écart-type)."
+  )
+
+
+``` 
+
+
+```{r sauve}
+# noms
+prog <- glue("Programme: {tag}.Rmd")
+myfile <- glue("{tag}.html")
+
+t1_gt <- t1 %>% 
+ 		as_gt() %>% 
+    gt::tab_source_note(gt::md(
+    	c(
+    	"Source: Constances, extraction du 24/07/2020, données inclusion et 2017.", 
+    	prog)   
+    	)) %>% 
+    		tab_header(
+    title = "Caractéristiques à l'inclusion selon la situation en 2017"  ) 	 %>%
+  tab_stubhead(label = "car") 
+
+t1_gt %>% 
+  	gtsave(filename = myfile)
+  # le htmal peut être collé dans Word.
+  #pour l'instant impossible de spécifier un chemin dans gtsave.
+  #je contourne : 
+  
+ file.copy(myfile, "Resultats", overwrite = TRUE)
+ file.remove(myfile)
+ 
+t1_gt 
+
+```
+ 
+# années d'inclusion 
+```{r, width = 6, height = 4}
+di <- df %>% group_by(traitt) %>% count(y_incl)
+
+
+
+di %>% 
+	ggplot(aes (x =y_incl, fill = traitt, y = n,  ymax = 11000)) +
+		geom_bar(stat = 'identity' ) +
+	theme_minimal() +
+	geom_text(aes(label = n), vjust=-0.5, size = 3) +
+	ylab("Effectifs") +
+	xlab("Année d'inclusion") +
+	labs(fill = "Situation 2017") +
+	scale_fill_manual(values = c("grey70","grey40")) +
+	labs(caption = glue("Programme : {tag}.Rmd"))
+
+myfile <- glue("Resultats/{tag}-Annee_inclusion.png")
+ggsave(myfile, width = 6, height = 4)
+```
+ # dates changement questionnaire
+
+Les dates de changement de questionnaire sont sans doute liées aux dates d'invitation, et non d'inclusion. le tableau ci-dessous n'est pas très clair.
+
+```{r}
+ df %>% group_by(aq_modvie_refdoc, y_incl) %>% summarise(min = min(fm_per_inclusion), max = max(fm_per_inclusion))
+```
+ 

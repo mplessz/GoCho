@@ -1,0 +1,145 @@
+---
+title: "9-modeles-resultatppal"
+author: "Marie Plessz"
+date: "17/12/2020"
+output: html_document
+---
+
+
+```{r setup, echo = FALSE, warning=FALSE, message=FALSE}
+
+library(tidyverse)
+library(knitr)
+library(labelled)
+library(questionr)
+library(glue)
+library(broom)
+library(modelsummary)
+library(kableExtra)
+library(GGally)
+
+#options pour les nombres
+options(OutDec= ",",
+				scipen = 999)  
+
+# espace après les milliers
+knitr::knit_hooks$set(inline = function(x) {   if(!is.numeric(x)){     x   }else{    prettyNum(round(x,2), big.mark=" ")    } }) 
+
+tag <- "9-modeles-resultatppal"
+```
+
+```{r data}
+data_orig <- readRDS("Data/Cree/08-appariements-modeles-PASenfant_PAStuu-models.RDS")
+
+```
+
+```{r fonctions}
+f_mod_coefint<- function(mod) {
+	broom::tidy(mod, conf.int = TRUE, exponentiate = TRUE) %>% 
+		filter( str_detect(term, "traitt")) %>% 
+		select(estimate, conf.low, conf.high, p.value)
+}
+
+titres <- tribble( ~vardep, ~title,
+	"leg_f" , "Légumes: faible (max 1/semaine)",
+	"leg_i" , "Légumes: intense (min 1/jour)" ,
+	"poi_f" , "Poisson: faible (<1/semaine)",
+	"poi_i" , "Poisson: intense (min 2/semaine)" ,
+	"vro_f" , "Viande rouge: faible (<1/semaine)",
+	"vro_i" , "Viande rouge: intense (min 4/semaine)" ,
+	"fas_f" , "Fastfood: faible (jamais)" ,
+	"fas_i" , "Fastfood: intense (min 1/semaine)",
+	"sod_f" , "Sodas: faible (jamais)",
+	"sod_i" , "Sodas: intense (min 1/semaine)" ,
+	"alc_f" , "Alcool: faible (0 verre cette semaine)",
+	"alc_i" , "Alcool : intense (min 2 verres/jour)",
+	"fum_f" , "Cigarette : faible (jamais)",
+	"fum_i" , "Cigarette : intense (min 10/jour)",
+	"san_f" , "Santé : excellente (8/8)",
+	"san_i" , "Santé : mauvaise (1-5/8)",
+	"bmi_i" , "Corpulence : obèse (IMC>30)"
+	) %>% 
+	rowid_to_column( "ordre")
+
+```
+```{r, warning = FALSE}
+	mnest <- data_orig %>%  
+			select(vardep, model_cem)			 %>% 
+	mutate(coefs = map(model_cem, f_mod_coefint))
+
+```
+
+
+
+```{r}
+footnote <-  glue("Modèle avec appariement (CEM). Programme : {tag}.Rmd")
+
+df_intensite <- mnest %>% 
+		select(vardep, coefs)			 %>% 
+	# ajouter les titres
+ 	left_join(titres, by = "vardep") %>% 
+	# transformer les variables "modèles" en liste nommée
+
+	unnest(coefs)  %>% 
+	arrange(ordre) %>% 
+	mutate(couleur = case_when(	
+											p.value<0.01 ~ "p<0,01",
+											(p.value<0.05 & p.value>=0.01 ) ~ "p<0,05",											  TRUE ~"p>0,05")) %>% 
+	mutate(Niveau = if_else(str_detect(title, "intense"), "Intense", "Faible")) %>% 
+	mutate(term = factor(title),
+				 term = fct_reorder(term, ordre))
+
+df_intensite$couleur <- factor(df_intensite$couleur, levels = c("p<0,01",  "0,01<p<0,05", "p>0,05")) 
+
+```
+
+
+```{r, fig.width = 6, fig.height=5}
+df_intensite %>% 		
+	ggcoef(mapping = aes(x = estimate, 
+											 y = reorder(term, -ordre),
+				 				 color = couleur),
+				 exponentiate = TRUE) +
+	facet_wrap("Niveau") +
+	theme_bw() +
+	theme(legend.position = "bottom",
+				 legend.justification='left',
+				plot.caption = element_text(vjust = 0,  size = 8)) +
+	scale_color_grey(guide_legend(title="Valeur test") , drop = FALSE ) +
+#	guides(couleur=guide_legend(title="Significativité")) +
+	ylab("Variable dépendante") +
+	xlab("Perdu emploi : odds-ratio") +
+		labs(caption = element_text(str_wrap(footnote, 90),
+																vjust = 0,  size = 8))
+
+ggsave(file = glue("Resultats/{tag}-graph.png"),width = 6, height=6)
+```
+
+# tableau effectifs appariés
+```{r}
+data_cem <- read.csv2("Resultats/08-appariements-modeles-PASenfant-cem.csv")
+
+df <- data_cem %>% 
+	filter(Participants == "All" | Participants == "Matched") %>% 
+	select(-Emploi2017) %>% 
+	pivot_wider(names_from = Participants, values_from = Chomage2017) %>%
+	mutate(pctmatched = Matched / All *100) 
+
+df2 <- data_cem %>% 
+	filter(Participants == "All" |Participants == "Matched") %>% 
+		select(-Chomage2017) %>% 
+		pivot_wider(names_from = Participants, values_from = Emploi2017) %>% 
+		mutate(pctmatched = Matched / All *100) 
+
+
+left_join(titres, df,  by = "vardep") %>% 
+	left_join(., df2, by = "vardep") %>% 
+	select(-vardep, -ordre) %>% 
+	kable(col.names = c("Variable", "Complets", "Appariés", "Appariés/complets",  "Complets","Appariés","Appariés/complets"),
+				digits = c(0)) %>% 
+				add_header_above(c(" " = 1, "Cas" = 3, "Témoins" = 3))
+
+```
+
+
+
