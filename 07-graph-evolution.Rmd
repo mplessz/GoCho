@@ -62,9 +62,9 @@ labels_vars<- tribble(
 	"poi_i",	 "Poisson" , 	"2/semaine",		2,
 	"vro_i",	 "Viande rouge","4/semaine",		3,
 	"sod_i",	 "Boissons sucrées", "1/semaine",	6,
-	"fas_i",	 "Fastfood" , 	"1/semaine",		4,
-	"bmi_i",	 "Corpulence" , "Obèse",			9,
-	"san_i",	 "Mauvaise santé", "1-5/8",			10
+ "fas_i",	 "Fastfood" , 	"1/semaine",		4  ,
+ "bmi_i",	 "Corpulence" , "Obèse",			9,
+ "san_i",	 "Mauvaise santé", "1-5/8",			10
 ) 	%>% 
 	rename("vardep_i" = "vardep") %>% 
 	mutate(vardep_o = str_replace(vardep_i, "_i", "_o")) %>% 
@@ -83,8 +83,12 @@ labels_vars<- tribble(
 ### Préparer les data au format long et avec les moyennes
 
 ```{r moyennes}
-varlist <- unique(data_orig$vardep) %>% str_subset("_i")
-varlist <- c(varlist , "fum_p")
+# variables dépendantes : inclure bmi et santé
+# varlist <- unique(data_orig$vardep) %>% str_subset("_i")
+# varlist <- c(varlist , "fum_p")
+
+# variables dépendantes : sélection pour GoCho
+varlist <- c("alc_i", "fum_i", "leg_i", "sod_i", "poi_i", "vro_i", "fas_i", "fum_p")
 
 dfl <- f_pivot(data_orig, vars = varlist)  %>% 
 
@@ -141,7 +145,7 @@ Pour grouper des lignes il faut **à la fois** les options `color`et `group`.
 
 Le nom du fichier dans lequel est sauvé le graphique est composé au début du fichier, d'après mon `tag`.
 
-```{r evolutions, fig.width=6, fig.height=9 }
+```{r evolutions, fig.width=6, fig.height=8 }
 
 footnote <- glue("Note: Cigarettes: à l'inclusion, moyenne sur l'ensemble des périodes où la personne a fumé. \n\n
 					Programme : {tag}.Rmd") 
@@ -169,8 +173,8 @@ print(gr_evolutions)
 # nom du fichier de sortie:
 myfile <- glue("Resultats/{tag}-01-selon-emploi-2017.png")
 myjpg <- glue("Resultats/{tag}-01-selon-emploi-2017.jpg")
-ggsave(myfile, plot = gr_evolutions, width = 6, height = 9)
-ggsave(myjpg, plot = gr_evolutions, width = 6, height = 9)
+ggsave(myfile, plot = gr_evolutions, width = 6, height = 8)
+ggsave(myjpg, plot = gr_evolutions, width = 6, height = 8)
 ```
 
 # Distribution vars détaillées
