@@ -23,7 +23,7 @@ Analyse prospective :
 J'ai utilise R et Stata version 15. Dans R j'utilise `Renv` pour sauver les packages 
 utilisés à la date du travail.
 
-Les fichiers en `0_` créent les liens ver le dossier contenant les données source (sur DD externe crypté)
+Les fichiers en `00_` créent les liens vers le dossier contenant les données source (si nécessaire)
 et les macro stata qui contiennent les chemins vers les dossiers.
 
 Les programmes R sont dans le dossier racine.
@@ -40,8 +40,6 @@ Pour cela je définis souvent au début du programme un `tag' qui est une macro 
 ## Les grandes étapes
 
 - préparation des données : Stata (1-Do-Generique et 2-Do/ jusqu'au N° 4)
-- stats descriptives à l'inclusion : R (N° 2)
-- ACM et CAH : R (N° 3)
 - Flowchart pour l'analyse prospective : R (N°5) d'après les effectifs calculés dans Stata (4).
 - Stats descriptives prospectives : R (5b et 6)
 - Appariement : Stata (5)
