@@ -111,10 +111,10 @@ gen cspvol=cspactmax
 recode cspvol (1 2 8=1) (9/max=.)
 label var cspvol "CSP actuelle ou plus longue"
 label def cspvol	///
-1 "Agric, Indep, Autre"								///
+1 "Agric, Indé, Autre"								///
 3   "Cadre, prof. intell. sup."	///
-4   "Profession intermediaire"						///
-5   "Employe" 										///
+4   "Profession intermédiaire"						///
+5   "Employé" 										///
 6   "Ouvrier" 										///
 7   "Sans profession" 								///
 , modify 

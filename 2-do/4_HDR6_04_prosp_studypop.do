@@ -51,6 +51,24 @@ count if fm_incluage <= 60
 keep if  fm_incluage <= 60
 * ==>(26,603 observations deleted)
 
+* edit label to match age max
+label define  age_cl 50 "50-60 ans", modify
+
+* vérification
+table age_cl, c(max fm_incluage)
+/*
+
+		-------------------------
+		Classe    |
+		d'age     |
+		inclusion | max(fm_inc~e)
+		----------+--------------
+		18-29 ans |            30
+		30-39 ans |            40
+		40-49 ans |            50
+		50-60 ans |            60 // c'est bon.
+		-------------------------
+*/
 
 * en emploi
 

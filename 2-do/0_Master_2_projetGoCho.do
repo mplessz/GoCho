@@ -20,4 +20,4 @@ do "$projet/2-do/5_appariements_modeles.do"
 do "$projet/2-do/6_modeles_plots.do"
 do "$projet/2-do/7_cem_effectifs.do"
 
-exit
+exit 

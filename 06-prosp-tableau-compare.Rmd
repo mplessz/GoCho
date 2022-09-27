@@ -92,8 +92,8 @@ var_label(df) <- list(homme_l = "Homme",
 								 prive_l = "Secteur privé",
 								 astopsante_l = "A eu arrêts >6 mois (santé)",
 								 astopcho_l = "A eu arrêts >6 mois (chômage)",
-								 traveffr_c = "Effort physique au travail (max=14)"
-								 )
+								 traveffr_c = "Effort physique au travail (max=14)",
+								 y_incl = "Année d'inclusion")
 ```
 
 
@@ -105,7 +105,7 @@ J'utilise le package `gtsummary`.
 t1 <- df %>% select(homme_l, aveccouple01_l, avecenf01_l, 
 							age_cl, 
 							edu,  cspvol,  prive_l, diffinnow_l, astopcho_l,
-							astopsante_l, traveffr_c, traitt )  %>% 
+							astopsante_l,  y_incl, traitt )  %>% 
 		tbl_summary(
 			by = traitt,
 			missing_text = "N manquantes",
@@ -121,7 +121,7 @@ t1 <- df %>% select(homme_l, aveccouple01_l, avecenf01_l,
       label ~ "**Caractéristiques à l'inclusion**"  ) ) %>% 
 	  modify_footnote(
     update = starts_with("stat") ~ 
-      "Statistiques prépsentées: % en colonnes. Pour l'effort physique: moyenne (écart-type)."
+      "Statistiques prépsentées: % en colonnes."
   )
 
 
