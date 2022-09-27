@@ -1,11 +1,11 @@
-*0_Master_2projetHDR6
+*0_Master_2_projetGoCho
 
 * Lance tous les programmes stata pour le chap 6 de l'HDR, dans l'ordre
 
 
 *-----		Pour analyse transversale inclusion 	--------
 do "$projet/2-do/1_HDR6_01_tous.do" 
-do "$projet/2-do/2a_HDR6_02_chomeurs.do"
+* do "$projet/2-do/2a_HDR6_02_chomeurs.do"
 
 
 *------		Pour analyse prospective		--------
