@@ -29,7 +29,7 @@ do "$projet\1-Do-generique\dm03b_alimI1_v1" // vars manquantes de ALIM AQ versio
 do "$projet\1-Do-generique\dm04_indgeo_v1"
 do "$projet\1-Do-generique\dm04b_paraclin_v2"
 * do "$projet\1-Do-generique\dm05_expopro_v2"	// 
-do "$projet\1-Do-generique\dm06_expoact_v2"	// !!! PB refaire tourner avec codage trevalinteff -> traveff
+do "$projet\1-Do-generique\dm06_expoact_v2"	// 
 do "$projet\1-Do-generique\dm06b_cprofp_v2"
 
 
