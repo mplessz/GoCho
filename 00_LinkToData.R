@@ -10,11 +10,11 @@ library(fs)
 # file system functions
 
 # vérifier que le lecteur K crypté est connecté et accessible
-if (file_access("K:/2020-HDR6-Data") == FALSE) stop("Connecter le disque dur externe, lettre K, et entrer le mot de passe") 
+if (file_access("K:/2022-GoCho-Data") == FALSE) stop("Connecter le disque dur externe, lettre K, et entrer le mot de passe") 
 
 
 # si le lien n'existe pas, le créer 
-if (link_exists("Data/") == FALSE) link_create("K:/2020-HDR6-Data", new_path = "Data/", symbolic = T )
+if (link_exists("Data/") == FALSE) link_create("K:/2022-GoCho-Data", new_path = "Data/", symbolic = T )
 
 
 # afficher l'emplacement réel des données pour info
