@@ -146,30 +146,31 @@ note san_o_sui : aq_sante_etatgeneral_n codée à l'envers `tag'
 
 
 * bmi
-* ajouter la variable calculée par Sehar, qu'elle a soigneusement nettoyée.
-* voir son fichier 2.Weight_IncSv.do
+	* Attention variables peu nettoyées par moi.
 
-merge 1:m proj_isp using "$projet\Data-Sehar\Temp\WEIGHT.dta" 
+	merge 1:1 proj_isp using "$temp/t_paraclin" ,  keepusing(taille_inc)
 
-/*
+	/*
+
     Result                           # of obs.
     -----------------------------------------
-    not matched                       119,723
-        from master                    41,917  (_merge==1)
-        from using                     77,806  (_merge==2)
+    not matched                        86,248
+        from master                       198  (_merge==1)
+        from using                     86,050  (_merge==2)
 
-    matched                           142,736  (_merge==3)
+    matched                           113,087  (_merge==3)
     -----------------------------------------
 
-*/
-drop if _merge ==2 // le fichier contenant suivi et inclusion, je garde suivi
-drop if followup ==0 // enlever les lignes qui correspondent au suivi
+	*/
+	drop if _merge ==2 // le vire les individus qui ne sont pas dans le suivi
 
-gen bmi_c_sui = Weight / ((Height/100)^2)
-replace bmi_c_sui = 15 if bmi < 15
-replace bmi_c_sui = 45 if bmi > 45 & bmi < .
-label var bmi_c_sui "Corpulence"
-note bmi_c_sui : bmi borné à 17-45. `tag'
+	gen bmi_c_sui = aq_sante_poids / ((taille_inc/100)^2)
+	replace bmi_c_sui = . if aq_sante_poids > 160
+	replace bmi_c_sui = 15 if bmi < 15
+	replace bmi_c_sui = 45 if bmi > 45 & bmi < .
+	label var bmi_c_sui "Corpulence"
+	note bmi_c_sui : bmi borné à 17-45. `tag'
+
 
 
 ******************	EMPLOI	***************

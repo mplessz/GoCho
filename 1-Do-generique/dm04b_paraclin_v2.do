@@ -15,6 +15,9 @@ use "$cree/DATA_PARACLIN_01.dta", clear
 gen bmi = paracl_poi_mespoi / (paracl_hau_mestail/100)^2
 note bmi: calculé par moi. paracl_poi_mespoi / (paracl_hau_mestail/100)^2. `tag'
 label var bmi "BMI"
+
+gen taille_inc = paracl_hau_mestail
+label var taille_inc "Taille inclusion (paraclinique)"
 	
 compress	
 sort proj_isp
