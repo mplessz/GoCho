@@ -55,11 +55,11 @@ flowchart
 ```
 Export décevant. j'ai sauvé "manuellement".
 
-```{r export}
-flowchart %>%
-     export_svg()    %>%
-     charToRaw %>% 
-#		rsvg::rsvg_png("Resultats/05_flowchart.png")
-    rsvg_pdf("Resultats/05_flowchart.pdf")
-```
+<!-- ```{r export} -->
+<!-- flowchart %>% -->
+<!--      export_svg()    %>% -->
+<!--      charToRaw %>%  -->
+<!-- # rsvg::rsvg_png("Resultats/05_flowchart.png") -->
+<!--     rsvg_pdf("Resultats/05_flowchart.pdf") -->
+<!-- ``` -->
 
