@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 *	Marie Plessz
 *	2021-02-03
-*	projet : HDR6
+*	projet : GoCho
 *	tache : 
 *		modèles
 *		sortir les coefs intéressants (outreg2)
@@ -284,14 +284,15 @@ grc1leg 		///
 	"$res/margins_alc_o.gph"     ///
 	"$res/margins_fum_p.gph"     ///
 	"$res/margins_fum_o.gph"     ///
-	"$res/margins_bmi_c.gph"     ///
-	"$res/margins_san_c.gph"     ///
-   ,  legendfrom("$res/margins_san_c.gph" )  span scheme(s1mono) cols(2)  scale(0.5) iscale(1) xcommon imargin(b=0 t=0)
+   ,  legendfrom("$res/margins_leg_o.gph" )  span scheme(s1mono) cols(2)  scale(0.5) iscale(1) xcommon imargin(b=0 t=0)
    
-  graph display, ysize(8.75) xsize(6)
+  graph display, ysize(8) xsize(6)
   
  graph export "$res/`tag'_graph_combined_margins.eps", preview(on) replace
   graph export "$res/`tag'_graph_combined_margins.png", replace
   
 exit
 
+
+/*	"$res/margins_bmi_c.gph"     ///
+	"$res/margins_san_c.gph"     ///   */

@@ -92,6 +92,7 @@ var_label(df) <- list(homme_l = "Homme",
 								 prive_l = "Secteur privé",
 								 astopsante_l = "A eu arrêts >6 mois (santé)",
 								 astopcho_l = "A eu arrêts >6 mois (chômage)",
+								 san_o_inc = "Santé perçue",
 								 traveffr_c = "Effort physique au travail (max=14)",
 								 y_incl = "Année d'inclusion")
 ```
@@ -105,7 +106,7 @@ J'utilise le package `gtsummary`.
 t1 <- df %>% select(homme_l, aveccouple01_l, avecenf01_l, 
 							age_cl, 
 							edu,  cspvol,  prive_l, diffinnow_l, astopcho_l,
-							astopsante_l,  y_incl, traitt )  %>% 
+							astopsante_l, san_o_inc,  y_incl, traitt )  %>% 
 		tbl_summary(
 			by = traitt,
 			missing_text = "N manquantes",

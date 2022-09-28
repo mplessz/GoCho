@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 *	Marie Plessz
 *	2021-02-01
-*	projet : HDR6
+*	projet : GoCho
 *	tache : 
 *		tableau des effectifs appariés par CEM
 *		
