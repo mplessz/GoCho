@@ -163,6 +163,8 @@ dpop$edu <- dpop$DIP11 %>%
   ) %>%
   fct_explicit_na("< Bac")
 
+var_label(dpop$edu) <- "Diplôme"
+
 ## Recodage de dpop$PUB3FP en dpop$prive
 dpop$public <- dpop$PUB3FP %>%
   fct_recode(
@@ -172,7 +174,7 @@ dpop$public <- dpop$PUB3FP %>%
     "Privé" = "Secteur privé"
   )
 
-var_label(dpop$public) <- "Secteur d'emploi"
+var_label(dpop$public) <- "Employeur"
 
 var_label(dpop$AGE5) <- "Âge"
 
