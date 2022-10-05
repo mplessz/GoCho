@@ -9,11 +9,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(foreign)
+library(haven)
 library(tidyverse)
 library(questionr)
 library(gtsummary)
 library(labelled)
 library(srvyr)
+library(gt)
 
 options(OutDec= ","  ,
 				encoding = "utf-8",
@@ -65,7 +67,7 @@ unlink(c(temp, temp2))
 
 ```
 
-```{r}
+```{r eec_prep}
 var_num <- data_orig   %>%  
   select(where(is.numeric)) %>% 
   names
@@ -87,8 +89,6 @@ df <- data_orig %>%  select(all_of(var_num)) %>% cbind(factors) %>%
 
 ## Variables
 
-
-
 DIP11 dipl le plus élevé
 	
 NFRRED nationalité française ou étrangère recodée
@@ -98,20 +98,15 @@ PUB3FP public ou privé de l'employeur
 STAT2 statut salarié, non salarié  : 	
 STAT2 2 Salarié
 
-	
-STC statut déclaré
-
-	
 ACTOP actif occupé au sens du bit
-
 
 EXTRIAN pondération
 
-##
+## Préparer la base de données
 
 
 ### Labels des variables
-```{r }
+```{r eec_labvariab}
 var_labels <- varlist_orig %>% tibble %>% 
   mutate_all(as.character ) %>% 
   mutate_all(~str_trunc(., width = 30)) %>% 
@@ -134,7 +129,7 @@ J'utilise des morceaux de code écrits pour PC18 (Pratiques culturelles 2018)
 
 [https://github.com/mplessz/PC2018-Stage-R] 
 
-```{r}
+```{r eec_lab values}
 value_labels <- varmod_orig %>%  tibble %>% 
   mutate(var = as.character(VARIABLE)) %>%
   mutate(val_lab = as.character(MODLIBELLE))%>%
@@ -164,33 +159,35 @@ df<- df  %>%
 ```
 
 ## Fréquences
-```{r}
+```{r eec_verif_statdesc}
 gtsummary::tbl_summary(df, include = c(DIP11, PUB3FP, STAT2, STC, ACTOP))
 
 ```
 ## Selection population + Recodages
-```{r}
+```{r eec_recodeselect}
 #sélection
 dpop <- df %>%  filter(STAT2 == "Salarié" &
                        METRODOM == "France Métropolitaine" &
-                         AGE5 != "60 ans et plus")  
+                         AGE5 != "60 ans et plus")  %>% 
+  	mutate_if(is.factor, fct_drop)  # se débarrasser des levels vides
 
 ## Recodage de dpop$DIP11 en dpop$edu
-dpop$edu <- dpop$DIP11 %>%
+dpop$edu3 <- dpop$DIP11 %>%
   fct_recode(
-    "Bac+3 et +" = "Licence (L3), Maitrise (M1)...",
-    "Bac+3 et +" = "Ecoles niveau licence et au...",
-    "Bac+2" = "DEUG",
-    "Bac+2" = "BTS, DUT ou équivalent",
-    "Bac+2" = "Paramédical et social (nive...",
-    "Bac" = "Baccalauréat général",
-    "Bac" = "Baccalauréat technologique,...",
     "< Bac" = "CAP, BEP ou équivalents",
     "< Bac" = "Brevet des collèges",
     "< Bac" = "Certificat d'Etudes Primaires",
-    "< Bac" = "Sans diplôme"
-  ) %>%
-  fct_explicit_na("< Bac")
+    "< Bac" = "Sans diplôme",
+    "> Bac" = "Paramédical et social (nive...",
+    "Bac" = "Baccalauréat général",
+    "Bac" = "Baccalauréat technologique,...",
+    "> Bac" = "Licence (L3), Maitrise (M1)...",
+    "> Bac" = "Ecoles niveau licence et au...",
+    "> Bac" = "DEUG",
+    "> Bac" = "BTS, DUT ou équivalent"
+  ) %>% 
+  fct_explicit_na("< Bac")%>%
+ fct_relevel( "< Bac", "Bac", "> Bac")
 
 var_label(dpop$edu) <- "Diplôme"
 
@@ -205,36 +202,83 @@ dpop$public <- dpop$PUB3FP %>%
 
 var_label(dpop$public) <- "Employeur"
 
-var_label(dpop$AGE5) <- "Âge"
+## age
+dpop$age_cl <- dpop$AGE5 %>%  fct_recode("< 30 ans" = "De 15 à 29 ans", 
+                                        "30-39 ans" = "De 30 à 39 ans",
+                                        "40-49 ans" = "De 40 à 49 ans",
+                                        "50-60 ans" = "De 50 à 59 ans")
+var_label(dpop$age_cl) <- "Âge"
+var_label(dpop$edu3) <- "Diplôme"
+
 
 # pondération
-dsvy <- as_survey(dpop, weights = EXTRIAN)
+dsvy <- as_survey(dpop, weights = EXTRIAN) %>% 
+  select(edu3, age_cl, public)
 
 ```
 
 ## stats descs pondérées
-```{r}
+```{r eec_tableau}
 tsvy <- tbl_svysummary(dsvy, 
-               include = c(edu, AGE5, public),
+               include = c(edu3, age_cl, public),
               statistic =   all_categorical() ~ "{p} %",
               digits = all_categorical() ~ 1  # nb de décimales
-			)# %>% 
-  # modify_header(stat_0 ~ "Avec pondération") 
+			)
 
-tpop <- tbl_summary(dpop, 
-               include = c(edu, AGE5, public),
+tsvy
+
+```
+
+## stats descs comparables dans Constances
+```{r constance_tableau}
+
+cst_orig <- read_dta("Data/Cree/HDR6_04_prosp_studypop.dta")
+
+
+# isoler les noms des vars à traiter comme des facteurs
+to_factor <- cst_orig %>%
+	select( -age,  -proj_isp, -fm_per_inclusion, -traveffr) %>% 
+	select( -matches("_c_")) %>% 
+	select( -matches("_n_") )%>% 					 	
+	map_lgl(is.numeric) %>%
+		names
+
+# traiter les facteurs
+dc <- cst_orig %>% 
+	mutate_at(to_factor, as_factor) %>% 
+	mutate_if(is.factor, fct_drop) %>% 
+		# se débarrasser des levels vides 
+  mutate(edu3 = fct_recode(edu, "> Bac" = "Bac +2 ou +3",
+                           "> Bac" = "Bac +4 ou plus"))
+  
+dc$public <- dc$prive %>% fct_recode( "Public" = "Public ou assimile",
+                                      "Privé" = "Prive") 
+var_label(dc$public) <- "Employeur"
+
+## age
+dc$age_cl <- dc$age_cl %>%  fct_recode("< 30 ans" = "18-29 ans")
+var_label(dc$age_cl ) <- "Âge"
+
+```
+
+```{r tableaux}
+
+td <- dc %>%  
+  select(edu3, age_cl, public) %>% 
+  tbl_summary(
+               include = c(edu3, age_cl, public),
               statistic =   all_categorical() ~ "{p} %",
-              digits = all_categorical() ~ 1  # nb de décimales
- 			) # %>% 
-#   modify_header(stat_0 ~ "Sans pondération")
+              digits = all_categorical() ~ 1 ) # nb de décimales
 
- tbl_merge(
-    tbls = list(tpop, tsvy)  ,
-    tab_spanner = c("**Sans pondération**", "**Avec pondération**")
-  )
+td
 
+tbl_merge(list(tsvy, td), 
+          tab_spanner= c("Enq Emploi 2016 pondérée", "Sous-population Constances"))  %>% 
+  as_gt() %>%
+  gt::tab_source_note(gt::md(c("Constances : sous-population sélectionnée pour cet article (18-59 ans)." , "Enquête emploi 2016 : 15-60 ans en emploi salarié résidant en France métropolitaine. Données pondérées"))) 
 
 
 ```
+
 
 
