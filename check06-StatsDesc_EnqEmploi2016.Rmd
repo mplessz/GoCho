@@ -1,0 +1,240 @@
+---
+title: "explo-StatsDesc_EnqEmploi2016"
+author: "Marie Plessz"
+date: "2022-09-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(foreign)
+library(tidyverse)
+library(questionr)
+library(gtsummary)
+library(labelled)
+library(srvyr)
+
+options(OutDec= ","  ,
+				encoding = "utf-8",
+				digits = 1)  
+
+# espace après les milliers
+knitr::knit_hooks$set(inline = function(x) {
+  if(!is.numeric(x)){
+    x   }else{
+      prettyNum(round(x,2), big.mark=",")    
+  } }) 
+
+# options générales pour le package gtsummary
+set_gtsummary_theme(theme_gtsummary_compact()) 
+theme_gtsummary_language(  language =  "fr")
+
+```
+
+# Statistiques descriptives sur l'enquête Emploi 2016 pour comparer avec Constances
+
+Je choisis 2016 parce que c'est l'année qui a les plus gros effectifs dans mon échantillon.
+
+Je sélectionne la population
+ - salariée
+ - âge 15-59 ans (on ne peut pas faire plus fin avec les données du site INSEE)
+ - résidant en France métropolitaine
+
+
+## télécharger les données enquête Emploi sur le site de l'INSEE 
+
+Ce chunk un peu long est conservé en cache.
+
+URL : ["https://www.insee.fr/fr/statistiques/fichier/2892163/fd_eec16_dbase.zip"]
+
+```{r import_data, cache=TRUE}
+
+url <- ("https://www.insee.fr/fr/statistiques/fichier/2892163/fd_eec16_dbase.zip" )
+temp <- tempfile()
+temp2 <- tempfile()
+download.file(url, temp)
+unzip(zipfile = temp, exdir = temp2)
+
+data_orig <- read.dbf(file.path(temp2,"fdeec16.dbf"))
+varlist_orig <- read.dbf(file.path(temp2,"varlist.dbf"))
+varmod_orig  <- read.dbf(file.path(temp2, "varmod.dbf"))
+
+
+unlink(c(temp, temp2))
+
+```
+
+```{r}
+var_num <- data_orig   %>%  
+  select(where(is.numeric)) %>% 
+  names
+
+var_char <- data_orig   %>% 
+  select(where(is.character)) %>% 
+  names
+
+
+factors <- data_orig %>% 
+  select(where(is.factor)) %>% 
+  mutate_all(as.character) %>% 
+  mutate_all(as.numeric) 
+
+df <- data_orig %>%  select(all_of(var_num)) %>% cbind(factors) %>% 
+  mutate(IDENTM = as.character(data_orig$IDENTM))
+```
+
+
+## Variables
+
+
+
+DIP11 dipl le plus élevé
+	
+NFRRED nationalité française ou étrangère recodée
+
+PUB3FP public ou privé de l'employeur
+	
+STAT2 statut salarié, non salarié  : 	
+STAT2 2 Salarié
+
+	
+STC statut déclaré
+
+	
+ACTOP actif occupé au sens du bit
+
+
+EXTRIAN pondération
+
+##
+
+
+### Labels des variables
+```{r }
+var_labels <- varlist_orig %>% tibble %>% 
+  mutate_all(as.character ) %>% 
+  mutate_all(~str_trunc(., width = 30)) %>% 
+  rename(label = LIBELLE, name = VARIABLE) 
+
+var_label_list <- 
+  setNames(var_labels$label, var_labels$name) %>%  as.list
+
+# un item de la liste des variables n'existe pas dans le tableau de données, je le supprime
+var_label_list$NAFANTG004N <- NULL
+
+# appliquer les labels
+df<- df  %>% 
+  set_variable_labels(.labels = var_label_list, .strict = FALSE)
+
+```
+### Labels des modalités
+
+J'utilise des morceaux de code écrits pour PC18 (Pratiques culturelles 2018)
+
+[https://github.com/mplessz/PC2018-Stage-R] 
+
+```{r}
+value_labels <- varmod_orig %>%  tibble %>% 
+  mutate(var = as.character(VARIABLE)) %>%
+  mutate(val_lab = as.character(MODLIBELLE))%>%
+  mutate_if(is.character, ~str_trunc(., width = 30)) %>% 
+  mutate(val = as.numeric(as.character(MODALITE))) %>% 
+  filter(var != "NAFANTG004N") %>% 
+   filter(var != "IDENTM") %>% 
+    select(var, val_lab, val)
+
+  #  cette var est absente des données.  
+valuelist <- value_labels %>% group_split(var) 
+
+names(valuelist) <- value_labels %>%
+  group_keys(var) %>% pull(var)
+
+valuelist <- sapply(valuelist, function(x) {x %>% select(val_lab, val) %>% deframe})
+
+# val_labels(df) <- valuelist
+
+df<- df  %>% 
+  set_value_labels(.labels = valuelist, .strict = FALSE)
+
+# on revient à des facteurs pour l'analyse
+ df <- df %>% select(-all_of(var_num))   %>% 
+   labelled::to_factor() %>% 
+   cbind(select(df, all_of(var_num)) )
+```
+
+## Fréquences
+```{r}
+gtsummary::tbl_summary(df, include = c(DIP11, PUB3FP, STAT2, STC, ACTOP))
+
+```
+## Selection population + Recodages
+```{r}
+#sélection
+dpop <- df %>%  filter(STAT2 == "Salarié" &
+                       METRODOM == "France Métropolitaine" &
+                         AGE5 != "60 ans et plus")  
+
+## Recodage de dpop$DIP11 en dpop$edu
+dpop$edu <- dpop$DIP11 %>%
+  fct_recode(
+    "Bac+3 et +" = "Licence (L3), Maitrise (M1)...",
+    "Bac+3 et +" = "Ecoles niveau licence et au...",
+    "Bac+2" = "DEUG",
+    "Bac+2" = "BTS, DUT ou équivalent",
+    "Bac+2" = "Paramédical et social (nive...",
+    "Bac" = "Baccalauréat général",
+    "Bac" = "Baccalauréat technologique,...",
+    "< Bac" = "CAP, BEP ou équivalents",
+    "< Bac" = "Brevet des collèges",
+    "< Bac" = "Certificat d'Etudes Primaires",
+    "< Bac" = "Sans diplôme"
+  ) %>%
+  fct_explicit_na("< Bac")
+
+var_label(dpop$edu) <- "Diplôme"
+
+## Recodage de dpop$PUB3FP en dpop$prive
+dpop$public <- dpop$PUB3FP %>%
+  fct_recode(
+    "Public" = "État",
+    "Public" = "Collectivités locales",
+    "Public" = "Hôpitaux publics",
+    "Privé" = "Secteur privé"
+  )
+
+var_label(dpop$public) <- "Employeur"
+
+var_label(dpop$AGE5) <- "Âge"
+
+# pondération
+dsvy <- as_survey(dpop, weights = EXTRIAN)
+
+```
+
+## stats descs pondérées
+```{r}
+tsvy <- tbl_svysummary(dsvy, 
+               include = c(edu, AGE5, public),
+              statistic =   all_categorical() ~ "{p} %",
+              digits = all_categorical() ~ 1  # nb de décimales
+			)# %>% 
+  # modify_header(stat_0 ~ "Avec pondération") 
+
+tpop <- tbl_summary(dpop, 
+               include = c(edu, AGE5, public),
+              statistic =   all_categorical() ~ "{p} %",
+              digits = all_categorical() ~ 1  # nb de décimales
+ 			) # %>% 
+#   modify_header(stat_0 ~ "Sans pondération")
+
+ tbl_merge(
+    tbls = list(tpop, tsvy)  ,
+    tab_spanner = c("**Sans pondération**", "**Avec pondération**")
+  )
+
+
+
+```
+
+
