@@ -57,7 +57,7 @@ le fait qu'à l'inclusion les 2 points sont quasi superposés est la preuve qu'o
 *================   PREPARER LES MACROS  ==========================*
 set dp comma
 
-local tag "check6_modeles_2016"
+local tag "check6_modeles_MEN"
 
 * vars de contrôle pour modèles
 global  rhs "homme i.age_cl aveccouple01 avecenf01  astopcho  diffinnow prive  i.edu santepercu i.cspvol i.y  i.tuu2012_cl "
@@ -110,7 +110,7 @@ foreach stub in  leg_o  poi_o vro_o fas_o  sod_o alc_o fum_o  {
 	drop *inc *sui
 
 	*==> sélection de ceux qui ont répondu à I3 : inclus à partir de 04/2015 <==
-	keep if cemaq == 1
+	keep if homme == 1
 	tab dep1 traitt
 	
 *===>  DID en prédisant la différence : DID est le coef de "traitt" (traitement)
@@ -153,12 +153,11 @@ local max = r(max)
 di `max' 	
 quietly margins i.phase#i.traitt, predict(outcome(`max'))
 quietly marginsplot, 	$margopts ///
-	saving("$res/margins_`stub'", replace)  title(" `title_`stub' ' - 2016" )
+	saving("$res/margins_`stub'", replace)  title(" `title_`stub' ' - Hommes" )
 
 }
 	
 ****** fin de la boucle ******	
-
 *===========	MODELES et PLOTS SUPPLEMENTAIRES		=============*
 
 
@@ -171,7 +170,6 @@ grc1leg 		///
 	"$res/margins_fas_o.gph"     ///
 	"$res/margins_sod_o.gph"     ///
 	"$res/margins_alc_o.gph"     ///
-	"$res/margins_fum_p.gph"     ///
 	"$res/margins_fum_o.gph"     ///
    ,  legendfrom("$res/margins_leg_o.gph" )  span scheme(s1mono) cols(2)  scale(0.5) iscale(1) xcommon imargin(b=0 t=0)
    
