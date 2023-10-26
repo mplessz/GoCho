@@ -1,0 +1,52 @@
+---
+title: "08_Desc_PerteEmploi"
+author: "Marie Plessz"
+date: "2023-10-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# charger la population incluse dans l'étude, importée de Stata en 05b
+
+data_orig<- readRDS("Data/Cree/HDR6_05b-wide.Rds")
+```
+
+## Contexte 
+
+Exploration pour reprendre en profondeur l'article tiré de mon HDR.
+
+Centrer sur que voit-on quand on prend au sérieux la dynamique des pratiques sociales et non les différences entre populations?
+
+dans l'HDR j'ai fait ce travail descriptif mais sur les chômeurs à l'inclusion, du coup ça paraissait un peu décousu. l'idée là ce serait de tout faire sur la perte d'emploi( donc sur les chômeurs du suivi, qui étaient en emploi à l'inclusion)
+
+Idées : 
+
+faire des régressions logistiques simples sur l'année 2017 uniqut. ==> dans stata. fait. 
+
+envisager de garder seult les inclus 2015-2016 pour plus de rigueur dans le traitt du temps.
+
+faire une ptite ACM sur 2017 en utilisant les infos sur l'inclusion. ptêt aller chercher qq variables en plus? sur revenus perçus en 2017?
+
+
+## préparer les data
+
+```{r}
+
+# data_orig
+
+"homme i.age_cl aveccouple01 avecenf01  astopcho  diffinnow prive  i.edu santepercu i.cspvol i.y  i.tuu2012_cl "
+
+```
+
+
+## différences entre perte d'emploi ou reste en emploi au suivi
+
+```{r}
+
+
+```
+
+
+## ACM perte d'emploi seult

@@ -64,6 +64,8 @@ var_label(df) <- list(
 	traitt = "Statut 2017", 
 	alc_control_inc = "Déjà bu alcool?")
 
+saveRDS(df, "Data/Cree/HDR6_05b-wide.Rds")
+
 ```
 
 ```{r listvar}
